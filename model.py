@@ -5,6 +5,7 @@ from bagelcode.ml_model.model import TransformerEmbeddingLayer, CategoricalDense
 
 
 class TransForeCaster(tf.keras.Model):
+
     def __init__(self,
                  behavior_length,
                  portrait_length,
@@ -58,6 +59,7 @@ class TransForeCaster(tf.keras.Model):
                 Dense(self.target_day, activation='relu')],
             name='output_head')
 
+
     def process_inputs(self, inputs):
         user_input, behavior_input, portrait_input = inputs[0], inputs[1], \
         inputs[2]
@@ -69,6 +71,7 @@ class TransForeCaster(tf.keras.Model):
                          portrait_idx in self.portrait_category_indice
                      ]
         return user_input, portrait_input, all_inputs
+
 
     def get_inter_category_embedding(self, all_inputs):
         category_encoder_outputs = [
@@ -91,12 +94,14 @@ class TransForeCaster(tf.keras.Model):
         category_embed = self.inter_category_norm(category_embed)
         return category_embed
 
+
     def get_static_embedding(self, user_input, portrait_input):
         user_info_embed = self.user_info_embed(user_input)
         status_embed = self.status_embed(portrait_input[:, -1, :])
         static_embed = user_info_embed + status_embed
         query = tf.expand_dims(static_embed, axis=1)
         return static_embed, query
+
 
     def process_transformer_encoding(self, inputs, query):
         contexts = self.trans_enc(inputs, query)  # (B, C, E)
@@ -106,12 +111,14 @@ class TransForeCaster(tf.keras.Model):
         output = self.output_head(output)
         return output
 
+
     def call(self, inputs):
         user_input, portrait_input, all_inputs = self.process_inputs(inputs)
         category_embed = self.get_inter_category_embedding(all_inputs)
         _, query = self.get_static_embedding(user_input, portrait_input)
         output = self.process_transformer_encoding(category_embed, query)
         return output
+
 
     def get_config(self):
         config = super().get_config().copy()
