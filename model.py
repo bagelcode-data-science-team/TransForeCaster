@@ -5,17 +5,18 @@ from bagelcode.ml_model.model import TransformerEmbeddingLayer, CategoricalDense
 
 
 class TransForeCaster(tf.keras.Model):
-
-    def __init__(self,
-                 behavior_length,
-                 portrait_length,
-                 window_length,
-                 target_day,
-                 vocab_size_dict,
-                 encoding_layers,
-                 behavior_category_indice,
-                 portrait_category_indice,
-                 **kwargs):
+    def __init__(
+        self,
+        behavior_length,
+        portrait_length,
+        window_length,
+        target_day,
+        vocab_size_dict,
+        encoding_layers,
+        behavior_category_indice,
+        portrait_category_indice,
+        **kwargs
+    ):
         
         super().__init__(**kwargs)
         self.behavior_length = behavior_length
@@ -28,22 +29,25 @@ class TransForeCaster(tf.keras.Model):
         self.portrait_category_indice = portrait_category_indice
 
         embedding_dim = EMBEDDING_SIZE
-        mha_num, head_size, num_heads, ff_dim = 2, embedding_dim, 8, embedding_dim
-        user_info_embed_ff_dims = [embedding_dim]
+        self.mha_num, self.head_size, self.num_heads, self.ff_dim = 2, embedding_dim, 8, embedding_dim
+        self.user_info_embed_ff_dims = [embedding_dim]
         status_embed_ff_dims = [64]
         output_ff_dims = [1024, 512, 256]
 
         self.inter_category_norm = LayerNormalization(epsilon=1e-6)
         self.inter_category_dense = Dense(units=embedding_dim, activation='relu', use_bias=False)
-
-        self.trans_enc = TransformerEmbeddingLayer(head_size=head_size, num_heads=num_heads, layer_num=mha_num, ff_dim=ff_dim, name='trans_enc')
+        self.trans_enc = get_transformer_encoder()
         self.context_norm = LayerNormalization(epsilon=1e-6)
         self.context_dense = Dense(units=embedding_dim, activation='relu', use_bias=False)
-
-        self.user_info_embed = CategoricalDense(self.vocab_size_dict, output_units=embedding_dim, dense_layers=user_info_embed_ff_dims, dropout=0.2, name='user_info_embed')
-        self.status_embed = Sequential([Dense(dim, activation='relu') for dim in status_embed_ff_dims + [embedding_dim]], name='status_embed')
-        
-        self.output_head = Sequential([Dense(dim) for dim in output_ff_dims] + [Dense(self.target_day, activation='relu')], name='output_head')
+        self.user_info_embed = get_categorical_dense(embedding_dim)
+        self.status_embed = Sequential(
+            [Dense(dim, activation='relu') for dim in status_embed_ff_dims + [embedding_dim]],
+            name='status_embed'
+        )
+        self.output_head = Sequential(
+            [Dense(dim) for dim in output_ff_dims] + [Dense(self.target_day, activation='relu')],
+            name='output_head'
+        )
 
 
     def process_inputs(self, inputs):
@@ -76,28 +80,44 @@ class TransForeCaster(tf.keras.Model):
         return category_embed
 
 
-    def get_static_embedding(self, user_input, portrait_input):
+    def get_cross_category_embedding(self, user_input, portrait_input, inter_category_embed):
         user_info_embed = self.user_info_embed(user_input)
         status_embed = self.status_embed(portrait_input[:,-1,:])
         static_embed = user_info_embed + status_embed
         query = tf.expand_dims(static_embed, axis=1)
-        return static_embed, query
 
-
-    def process_transformer_encoding(self, inputs, query):
-        contexts = self.trans_enc(inputs, query) # (B, C, E)
-        context = tf.math.reduce_mean(contexts, axis=1) # (B, E)
+        contexts = self.trans_enc(inter_category_embed, query)
+        context = tf.math.reduce_mean(contexts, axis=1)
         context = self.context_norm(context)
         output = self.context_dense(context)
-        output = self.output_head(output)
         return output
+    
+
+    def get_transformer_encoder(self):
+        return TransformerEmbeddingLayer(
+            head_size=self.head_size,
+            num_heads=self.num_heads,
+            layer_num=self.mha_num,
+            ff_dim=self.ff_dim,
+            name='trans_enc'
+        )
+
+
+    def get_categorical_dense(self, embedding_dim):
+        return CategoricalDense(
+            self.vocab_size_dict,
+            output_units=embedding_dim,
+            dense_layers=self.user_info_embed_ff_dims,
+            dropout=0.2,
+            name='user_info_embed'
+        )
 
 
     def call(self, inputs):
         user_input, portrait_input, all_inputs = self.process_inputs(inputs)
-        category_embed = self.get_inter_category_embedding(all_inputs)
-        _, query = self.get_static_embedding(user_input, portrait_input)
-        output = self.process_transformer_encoding(category_embed, query)
+        inter_category_embed = self.get_inter_category_embedding(all_inputs)
+        output = self.get_cross_category_embedding(user_input, portrait_input, inter_category_embed)
+        output = self.output_head(output)
         return output
 
 
