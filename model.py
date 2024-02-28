@@ -29,17 +29,29 @@ class TransForeCaster(tf.keras.Model):
         self.portrait_category_indice = portrait_category_indice
 
         embedding_dim = EMBEDDING_SIZE
-        self.mha_num, self.head_size, self.num_heads, self.ff_dim = 2, embedding_dim, 8, embedding_dim
-        self.user_info_embed_ff_dims = [embedding_dim]
+        mha_num, head_size, num_heads, ff_dim = 2, embedding_dim, 8, embedding_dim
+        user_info_embed_ff_dims = [embedding_dim]
         status_embed_ff_dims = [64]
         output_ff_dims = [1024, 512, 256]
 
         self.inter_category_norm = LayerNormalization(epsilon=1e-6)
         self.inter_category_dense = Dense(units=embedding_dim, activation='relu', use_bias=False)
-        self.trans_enc = get_transformer_encoder()
+        self.trans_enc = TransformerEmbeddingLayer(
+            head_size=head_size,
+            num_heads=num_heads,
+            layer_num=mha_num,
+            ff_dim=ff_dim,
+            name='trans_enc'
+        )
         self.context_norm = LayerNormalization(epsilon=1e-6)
         self.context_dense = Dense(units=embedding_dim, activation='relu', use_bias=False)
-        self.user_info_embed = get_categorical_dense(embedding_dim)
+        self.user_info_embed = CategoricalDense(
+            self.vocab_size_dict,
+            output_units=embedding_dim,
+            dense_layers=user_info_embed_ff_dims,
+            dropout=0.2,
+            name='user_info_embed'
+        )
         self.status_embed = Sequential(
             [Dense(dim, activation='relu') for dim in status_embed_ff_dims + [embedding_dim]],
             name='status_embed'
@@ -91,26 +103,6 @@ class TransForeCaster(tf.keras.Model):
         context = self.context_norm(context)
         output = self.context_dense(context)
         return output
-    
-
-    def get_transformer_encoder(self):
-        return TransformerEmbeddingLayer(
-            head_size=self.head_size,
-            num_heads=self.num_heads,
-            layer_num=self.mha_num,
-            ff_dim=self.ff_dim,
-            name='trans_enc'
-        )
-
-
-    def get_categorical_dense(self, embedding_dim):
-        return CategoricalDense(
-            self.vocab_size_dict,
-            output_units=embedding_dim,
-            dense_layers=self.user_info_embed_ff_dims,
-            dropout=0.2,
-            name='user_info_embed'
-        )
 
 
     def call(self, inputs):
