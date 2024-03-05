@@ -3,6 +3,76 @@ from tensorflow.keras import Sequential
 from tensorflow.keras.layers import Dense, LayerNormalization
 from bagelcode.ml_model.model import TransformerEmbeddingLayer, CategoricalDense
 
+EMBEDDING_SIZE = 24
+
+class TemporalConvBlock(tf.keras.layers.Layer):
+    def __init__(self, embedding_dim, stride=1, res_conv=False):
+        super(TemporalConvBlock, self).__init__()
+        self.embedding_dim = embedding_dim
+        self.stride = stride
+        self.res_conv = res_conv
+        self.conv1 = Conv1D(embedding_dim/4, kernel_size=10, strides=stride, padding='valid')
+        self.ln1 = LayerNormalization(epsilon=1e-6)
+        
+        self.conv2 = Conv1D(embedding_dim/2, kernel_size=10, strides=stride, padding='valid')
+        self.ln2 = LayerNormalization(epsilon=1e-6)
+
+        self.conv3 = Conv1D(embedding_dim, kernel_size=10, strides=stride, padding='valid')
+        self.ln3 = LayerNormalization(epsilon=1e-6)
+
+    def call(self, inputs):
+        x = self.conv1(inputs)
+        x = self.ln1(x)
+        x = tfa.layers.GELU()(x)
+    
+        x = self.conv2(x)
+        x = self.ln2(x)
+
+        x = self.conv3(x)
+        x = self.ln3(x)
+
+        out = tfa.layers.GELU()(x)
+        return out
+
+    def get_config(self):
+        config = super().get_config().copy()
+        config.update({
+            'embedding_dim' : self.embedding_dim,
+            'stride' : self.stride,
+            'res_conv' : self.res_conv
+        })
+        return config
+
+
+class EncoderIncubator(tf.keras.Model):
+    def __init__(self, window_length, feature_length, **kwargs):
+        super().__init__(**kwargs)
+        self.window_length = window_length
+        self.feature_length = feature_length
+        self.embedding_size = EMBEDDING_SIZE
+        
+        hidden_size = embedding_size * 2
+        dense_dims = [
+            embedding_size * 2**i for i in range(1, 3)
+            if embedding_size * 2**i < window_length * feature_length
+        ] + [window_length * feature_length]
+        
+        self.encoder = TemporalConvBlock(hidden_size)
+        self.decoder = Sequential([Dense(dim, activation='relu') for dim in dense_dims])
+
+    def call(self, inputs):
+        x = self.encoder(inputs)
+        z_mean = x[... , :int(self.embedding_size)]
+        z_log_var = x[... , int(self.embedding_size):]
+        z = z_mean
+
+        kl_loss = -0.5 * K.sum(1 + z_log_var - K.square(z_mean) - K.exp(z_log_var), axis=-1)
+        kl_loss = K.mean(kl_loss)
+        self.add_loss(kl_loss)
+
+        x = self.decoder(z)
+        return x
+
 
 class TransForeCaster(tf.keras.Model):
     def __init__(
@@ -17,7 +87,6 @@ class TransForeCaster(tf.keras.Model):
         portrait_category_indice,
         **kwargs
     ):
-        
         super().__init__(**kwargs)
         self.behavior_length = behavior_length
         self.portrait_length = portrait_length
@@ -61,7 +130,6 @@ class TransForeCaster(tf.keras.Model):
             name='output_head'
         )
 
-
     def process_inputs(self, inputs):
         user_input, behavior_input, portrait_input = inputs[0], inputs[1], inputs[2]
         all_inputs = [
@@ -71,7 +139,6 @@ class TransForeCaster(tf.keras.Model):
         ]
         return user_input, portrait_input, all_inputs
 
-
     def get_inter_category_embedding(self, all_inputs):
         category_encoder_outputs = [
             tf.squeeze(encoder(inputs), axis=1) for encoder, inputs in zip(self.encoding_layers, all_inputs)
@@ -80,17 +147,11 @@ class TransForeCaster(tf.keras.Model):
 
         embedding_size = category_embed.shape[-1]//2
         z_mean = category_embed[..., :embedding_size]
-        z_log_var = category_embed[..., embedding_size:]
-        batch_size = tf.shape(z_mean)[0]
-        categroy_size = tf.shape(z_mean)[1]
-        embedding_size = tf.shape(z_mean)[2]
-        epsilon = K.random_normal(shape=(batch_size, categroy_size, embedding_size))
-        category_embed = z_mean + K.exp(0.5 * z_log_var) * epsilon
+        category_embed = z_mean
 
         category_embed = self.inter_category_dense(category_embed)
         category_embed = self.inter_category_norm(category_embed)
         return category_embed
-
 
     def get_cross_category_embedding(self, user_input, portrait_input, inter_category_embed):
         user_info_embed = self.user_info_embed(user_input)
@@ -104,14 +165,12 @@ class TransForeCaster(tf.keras.Model):
         output = self.context_dense(context)
         return output
 
-
     def call(self, inputs):
         user_input, portrait_input, all_inputs = self.process_inputs(inputs)
         inter_category_embed = self.get_inter_category_embedding(all_inputs)
         output = self.get_cross_category_embedding(user_input, portrait_input, inter_category_embed)
         output = self.output_head(output)
         return output
-
 
     def get_config(self):
         config = super().get_config().copy()
