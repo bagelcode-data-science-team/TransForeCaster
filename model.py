@@ -51,10 +51,10 @@ class EncoderIncubator(tf.keras.Model):
         self.feature_length = feature_length
         self.embedding_size = EMBEDDING_SIZE
         
-        hidden_size = embedding_size * 2
+        hidden_size = self.embedding_size * 2
         dense_dims = [
-            embedding_size * 2**i for i in range(1, 3)
-            if embedding_size * 2**i < window_length * feature_length
+            self.embedding_size * 2**i for i in range(1, 3)
+            if self.embedding_size * 2**i < window_length * feature_length
         ] + [window_length * feature_length]
         
         self.encoder = TemporalConvBlock(hidden_size)
