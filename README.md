@@ -1,11 +1,9 @@
 # TransForeCaster: In-and-Cross Categorized Feature Integration in User-Centric Deep Representation Learning
 
 ## Abstract
-This paper presents , a novel user-centric representation learning approach, designed to maximize feature integration and enhance the prediction accuracy of user purchase behavior through a two-stage process: In-Category Integration (ICI) and Cross-Category Integration (CCI). The ICI stage employs the Time-Series Feature Mixer (TSFM) for encapsulating in-category feature dynamics along the time axis, leading to compact and continuous category representations. The CCI stage then leverages a Meta-Conditioned Transformer (MCT) to integrate these representations, capturing complex cross-category relationships with metadata. This method not only facilitates precise behavior predictions but also provides interpretable insights into the factors influencing purchase behaviors. Supported by ablation studies, our methodology demonstrates significant improvements over conventional models, with in-depth evaluations using "Club Vegas Slots" game data. Additionally, we emphasize qualitative superiority through UMAP visualizations and feature importance assessments for layer-level assessments on model decisions. Extensive testing through an in-house MLOps pipeline ensures the model's robustness for live deployment. The source code is available at https://github.com/bagelcode-data-science-team/TransForeCaster
+This paper presents **TransForeCaster**, a novel user-centric representation learning approach, designed to maximize feature integration and enhance the prediction accuracy of user purchase behavior through a two-stage process: In-Category Integration (ICI) and Cross-Category Integration (CCI). The ICI stage employs the Time-Series Feature Mixer (TSFM) for encapsulating in-category feature dynamics along the time axis, leading to compact and continuous category representations. The CCI stage then leverages a Meta-Conditioned Transformer (MCT) to integrate these representations, capturing complex cross-category relationships with metadata. This method not only facilitates precise behavior predictions but also provides interpretable insights into the factors influencing purchase behaviors. Supported by ablation studies, our methodology demonstrates significant improvements over conventional models, with in-depth evaluations using "Club Vegas Slots" game data. Additionally, we emphasize qualitative superiority through UMAP visualizations and feature importance assessments for layer-level assessments on model decisions. Extensive testing through an in-house MLOps pipeline ensures the model's robustness for live deployment. The source code is available at https://github.com/bagelcode-data-science-team/TransForeCaster
 
 ## Model Architecture Overview
-### Simplified Architecture
-![TransForeCaster simplified overview](https://github.com/bagelcode-data-science-team/TransForeCaster/assets/131356997/bf67100a-5d9f-4a7f-8ba4-b217962e35d5)
 ### Detailed Architecture
 ![TransForeCaster overview](https://github.com/bagelcode-data-science-team/TransForeCaster/assets/131356997/bf67100a-5d9f-4a7f-8ba4-b217962e35d5)
 
@@ -65,32 +63,27 @@ TransForeCaster aims to enhance predictive analytics by leveraging deep learning
 
 ## Baseline Comparison
 
-<img width="437" alt="Baseline comparison" src="https://github.com/bagelcode-data-science-team/TransForeCaster/assets/131356997/ccbd5bd3-7979-4688-99df-a6204673bc91">
-
 - **RFM** uses Recency, Frequency, and Monetary value of the purchase with three parametric models with different distribution assumptions on RFM: Pareto/NBD, BG/NBD, MBG/MBD. Note that RFM only utilizes recency, frequency, monetary value of the purchase and disregards the rest of the data such as user information, portrait, and behavior.
 - **Two-stage XGBoost** uses a two-step process for purchase prediction. It first estimates whether a user is a payer or a non-payer, and subsequently predicts the purchase amount of the user.
 - **WhalesDetector** uses a three-layer CNN (300, 150, 60 nodes with conv-pool) followed by a kernel size (7, 3, 1) to detect whether the user is a high payer (whale). We reproduced it as a regression model using ReLU at the output layer to predict LTV.
 - **MSDMT** utilizes heterogeneous multi-datasource, including player portrait tabular data, behavior sequence data, and social network graph data, which leads to the comprehensive understanding of each player. Since our data does not include social network information, we employed the model excluding GNN which consists of player portraits with LSTM layers + behavior sequence with Conv-1D followed by LSTM layers and concatenated by Fully Connected layers.
 - **BST** uses a transformer architecture with LeakyReLU and dropout on behavior sequence data of the user to capture interactions in sparse dataset. BST has 22,565,930 parameters, 840,821,184 FLOPS.
 - **MDLUR** utilizes 3 different models for user, portrait, behavior data and concatenate it to predict purchase amount of the user.
-
-- (Additional) 
-- (Additional) 
 - (Additional) 
 
 ## Baseline Performance Comparison
 
-| Model            | ...  | ...          |
-|------------------|-------------|----------------|
-| RFM              | N/A         | N/A            |
-| Two-stage XGBoost| N/A         | N/A            |
-| WhalesDetector   | 188,805     | 1,548,015,232  |
-| MSDMT            | 372,146     | 159,686,340    |
-| BST              | 22,565,930  | 840,821,184    |
-| MDLUR            | 23,743,726  | 9,987,937,346  |
-| A            | 23,743,726  | 9,987,937,346  |
-| B            | 23,743,726  | 9,987,937,346  |
-| **TransForeCaster** | **690,164**  | **188,107,072** |
+| Model            | MAE | RMSE | R^2 | WAP | WAR | WAF1 |
+|------------------|------|------|------|------|------|------|
+| RFM(Pareto/NBD)  | 62.83 | 129.80 | -0.26 | 0.0959 | 0.0398 | 0.0265 |
+| RFM(BG/NBD)  | 37.52 | 93.20 | 0.35 | 0.7278 | 0.6219 | 0.6272 |
+| RFM(MBG/NBD)  | 43.15 | 102.08 | 0.22 | 0.7140 | 0.5622 | 0.5729 |
+| Two-stage XGBoost| 24.33 | 68.94 | -0.01 | 0.6814 | 0.7390 | 0.6975 |
+| WhalesDetector   | 2.45 | 20.50 | 0.81 | 0.9651 | 0.9643 | 0.9647 |
+| MSDMT            | 2.49 | 23.47 | 0.75 | 0.9705 | 0.9705 | 0.9705 |
+| BST              | 2.73 | 25.99 | 0.70 | 0.9667 | 0.9665 | 0.9665 |
+| MDLUR            | 2.31 | 19.54 | **0.83** | 0.9700 | 0.9695 | 0.9697 |
+| **TransForeCaster** | **0.25**  | **6.99** | 0.77 | **0.9945** | **0.9948** | **0.9946** |
 
 ## Baseline Complexity Comparison
 
