@@ -26,7 +26,8 @@ class EncoderIncubator(tf.keras.Model):
         x = self.encoder(inputs)
         z_mean = x[..., :int(self.embedding_size)]
         z_log_var = x[..., int(self.embedding_size):]
-        z = z_mean
+        epsilon = tf.random.normal(shape=tf.shape(z_mean))
+        z = z_mean + tf.exp(0.5 * z_log_var) * epsilon
 
         kl_loss = -0.5 * tf.reduce_sum(
             1 + z_log_var - tf.square(z_mean) - tf.exp(z_log_var), axis=-1)
