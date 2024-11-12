@@ -20,8 +20,7 @@ class EncoderIncubator(tf.keras.Model):
                      ] + [window_length * feature_length]
         num_layers, encoder_dropout = 1, .0
         self.encoder = Sequential([LSTM(hidden_size, return_sequences=True, dropout=encoder_dropout) for _ in range(num_layers)] + [tf.keras.layers.AveragePooling1D(pool_size=window_length)])
-        self.decoder = Sequential(
-                        [Dense(dim, activation='relu') for dim in dense_dims])
+        self.decoder = Sequential([Dense(dim, activation='relu') for dim in dense_dims])
 
     def call(self, inputs):
         x = self.encoder(inputs)
