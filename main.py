@@ -6,7 +6,7 @@ from src.utils import *
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='TransForeCaster Training')
     parser.add_argument('--data', type=str, default='./src/data/', help='data directory')
-    parser.add_argument('--lr', type=int, default=0.001, help='learning rate')
+    parser.add_argument('--lr', type=float, default=0.001, help='learning rate')
     parser.add_argument('--batch', type=int, default=64, help='batch size')
     parser.add_argument('--input', type=int, default=7, help='input day')
     parser.add_argument('--target', type=int, default=14, help='target day')
