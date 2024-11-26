@@ -101,3 +101,30 @@ TransForeCaster aims to enhance predictive analytics by leveraging deep learning
 
 ## Conclusion
 TransForeCaster showcases substantial improvements in efficiency, effectiveness, and interpretability over MDLUR, marking a significant advancement in user-centric predictive modeling.
+
+## Getting Started
+This is the simple guide to train and evaluate TransForeCaster. TransForeCaster is implemented by Tensorflow 2.0 framework. 
+### Installation
+
+1. **Clone the repository**:
+    ```bash
+    git clone https://github.com/bagelcode-data-science-team/TransForeCaster
+    ```
+
+2. **Install the required packages**:
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+### Running 
+3. **Generate Dummy Dataset**:
+    - We provide sample data, which is not real data, and code to generate the sample data.:
+      ```bash
+      python dummy.py
+      ```
+
+4. **Training and Evaluate**:
+      ```bash
+      python main.py --data ./src/data/ --lr 0.001 --batch 64 \
+      --input 7 --target 14 --epoch 15 --objective purchase
+      ```
