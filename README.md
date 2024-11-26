@@ -123,7 +123,7 @@ This is the simple guide to train and evaluate TransForeCaster. TransForeCaster 
       python dummy.py
       ```
 
-4. **Training and Evaluate**:
+4. **Train and Evaluate**:
       ```bash
       python main.py --data ./src/data/ --lr 0.001 --batch 64 --input 7 --target 14 --epoch 15 --objective purchase
       ```
